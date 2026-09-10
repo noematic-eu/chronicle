@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [".", "crates/chronicle-engine", "crates/chronicle-dsl"]
+
+[package]
+name = "chronicle"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Chronicle player — missions in a historical spine"
+publish = false
+
+[[bin]]
+name = "chronicle"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+chronicle-dsl = { path = "crates/chronicle-dsl" }
+chronicle-engine = { path = "crates/chronicle-engine" }
+crossterm = "0.28"
+ratatui = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
