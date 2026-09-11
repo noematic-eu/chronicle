@@ -35,3 +35,19 @@ fn peru_partie1_order() {
     );
     assert_eq!(camp.chapters.len(), 3);
 }
+
+#[test]
+fn silence_partie1_order() {
+    let camp = compile_campaign(&play_dir("silence/play")).expect("campaign");
+    assert_eq!(camp.entry, "chemin-ordinaire");
+    assert_eq!(camp.meta.id, "silence");
+    assert_eq!(
+        camp.order(),
+        vec![
+            "chemin-ordinaire".to_string(),
+            "neuf-colonnes".to_string(),
+            "le-nom".to_string()
+        ]
+    );
+    assert_eq!(camp.chapters.len(), 3);
+}
