@@ -336,7 +336,7 @@ fn choose(ir: &Ir, state: &mut WorldState, index: usize) -> Result<()> {
         }
         other => return Err(EngineError::WrongMode("Choose", other.into())),
     };
-    apply_choice(state, &choice);
+    apply_choice(ir, state, &choice);
     state.mode = after_mode.into();
     state.cursor = 0;
     state.last_choice = Some(choice.id.clone());
@@ -347,7 +347,7 @@ fn choose(ir: &Ir, state: &mut WorldState, index: usize) -> Result<()> {
     Ok(())
 }
 
-fn apply_choice(state: &mut WorldState, choice: &ChoiceIr) {
+fn apply_choice(ir: &Ir, state: &mut WorldState, choice: &ChoiceIr) {
     for (k, d) in &choice.delta {
         if let Some(e) = state.monnaies.get_mut(k) {
             *e = (*e + d).max(0);
@@ -365,7 +365,10 @@ fn apply_choice(state: &mut WorldState, choice: &ChoiceIr) {
     for h in &choice.heritage {
         state.heritage.insert(h.clone());
     }
-    if !choice.heritage.is_empty() && state.monnaies.get("chevaux").copied().unwrap_or(0) > 0 {
+    if ir.chapter.cheval_si_chevaux
+        && !choice.heritage.is_empty()
+        && state.monnaies.get("chevaux").copied().unwrap_or(0) > 0
+    {
         state.heritage.insert("cheval".into());
     }
     for h in &choice.heritage_remove {

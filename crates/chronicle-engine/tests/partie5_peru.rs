@@ -94,5 +94,5 @@ fn amaru_without_being_the_center() {
     assert!(s3.flags.contains("sans-titre"));
     assert!(s3.flags.contains("genou"));
     assert!(s3.flags.contains("zinc-cecilio"));
-    assert!(s3.next_chapter.is_none());
+    assert_eq!(s3.next_chapter.as_deref(), Some("cadix"));
 }

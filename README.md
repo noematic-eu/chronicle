@@ -20,7 +20,7 @@ Keys: j/k, Enter, n notes, ? help, q quit.
 
 Saves: `instance/chronicle/<france|peru|silence>/lineage.json`.
 
-`heritage` on a choice is a union (it never wipes the cave). `next` must name a chapter in the pack or `lint` fails.
+`heritage` on a choice is a union (it never wipes the cave). `next` must name a chapter in the pack or `lint` fails. `cheval_si_chevaux: true` (France 1.1) is the only place a `chevaux` stock also adds the `cheval` relic.
 
 Override the packs root with `CHRONICLE_STORIES=/path/to/chronicle-stories`.
 

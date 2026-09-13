@@ -31,10 +31,17 @@ fn france_partie1_order() {
             "edit".to_string(),
             "fronde".to_string(),
             "sel-dragons".to_string(),
-            "zinc-grele".to_string()
+            "zinc-grele".to_string(),
+            "cahier".to_string(),
+            "an-93".to_string(),
+            "fils-et-route".to_string(),
+            "trois-jours".to_string(),
+            "prussiens".to_string(),
+            "affaire".to_string(),
+            "aout".to_string()
         ]
     );
-    assert_eq!(camp.chapters.len(), 20);
+    assert_eq!(camp.chapters.len(), 27);
 }
 
 #[test]
@@ -60,10 +67,19 @@ fn peru_partie1_order() {
             "alcabala".to_string(),
             "messager".to_string(),
             "revolte".to_string(),
-            "casse-kuraka".to_string()
+            "casse-kuraka".to_string(),
+            "cadix".to_string(),
+            "drapeau".to_string(),
+            "junin".to_string(),
+            "hacienda".to_string(),
+            "guano".to_string(),
+            "brena".to_string(),
+            "gamonal".to_string(),
+            "deux-journaux".to_string(),
+            "dix-neuf".to_string()
         ]
     );
-    assert_eq!(camp.chapters.len(), 16);
+    assert_eq!(camp.chapters.len(), 25);
     assert_eq!(
         camp.resume(
             &[

@@ -60,5 +60,5 @@ fn etat_pain_to_grele() {
     assert!(s3.flags.contains("opinion-zinc"));
     assert!(s3.flags.contains("annee-raturee"));
     assert_eq!(s3.heir.id, "antoine");
-    assert!(s3.next_chapter.is_none());
+    assert_eq!(s3.next_chapter.as_deref(), Some("cahier"));
 }

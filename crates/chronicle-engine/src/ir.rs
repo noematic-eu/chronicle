@@ -52,6 +52,10 @@ pub struct ChapterIr {
     /// only that place's petitions run. History is which doors exist.
     #[serde(default)]
     pub lieux_jouables: Vec<LieuJouable>,
+    /// If true, a choice that lists `heritage` also adds `cheval` when
+    /// the `chevaux` currency is > 0. France 1.1 only; not a global rule.
+    #[serde(default)]
+    pub cheval_si_chevaux: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
