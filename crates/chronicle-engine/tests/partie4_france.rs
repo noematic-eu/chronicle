@@ -2,7 +2,7 @@ use chronicle_dsl::{compile_campaign, stories_dir};
 use chronicle_engine::{apply, boot, boot_with, choice_ids, Carry, Command, Ir, WorldState};
 
 fn camp() -> chronicle_dsl::Campaign {
-    compile_campaign(&stories_dir().join("silence/play")).unwrap()
+    compile_campaign(&stories_dir().join("france/play")).unwrap()
 }
 
 fn choose(ir: &Ir, state: WorldState, id: &str) -> WorldState {
@@ -37,45 +37,41 @@ fn play_ids(ir: &Ir, mut state: WorldState, ids: &[&str]) -> WorldState {
 }
 
 #[test]
-fn eau_et_chapelle() {
+fn guerre_longue_to_linteau() {
     let camp = camp();
-    let c1 = camp.get("chemin-ordinaire").unwrap();
+    let c1 = camp.get("deux-heritiers").unwrap();
     let (state, _) = boot(c1).unwrap();
-    let s1 = play_ids(
-        c1,
-        state,
-        &["refuser-lot", "chasser", "garder-pain", "volets"],
-    );
-    assert!(!s1.flags.contains("cache-pretre"));
+    assert_eq!(state.heir.id, "guillaume");
+    let s1 = play_ids(c1, state, &["loger-thomas", "rire-salique", "peage-local"]);
+    assert!(s1.flags.contains("thomas-loge"));
+    assert!(s1.flags.contains("camp-local"));
 
-    let c2 = camp.get("neuf-colonnes").unwrap();
+    let c2 = camp.get("chevauchee-peste").unwrap();
     let (state, _) = boot_with(c2, Some(&Carry::from_state(&s1))).unwrap();
-    assert_eq!(state.heir.id, "jean");
+    assert_eq!(state.heir.id, "mahaut");
     let s2 = play_ids(
         c2,
         state,
-        &["donner-eau", "ouvrir", "ramasser", "ouvrir-enfant", "fosses"],
-    );
-    assert!(s2.flags.contains("chapelet"));
-    assert!(s2.heritage.contains("chapelet"));
-    assert!(s2.flags.contains("vu-fosses-1794"));
-    assert!(s2.flags.contains("enfant-cache"));
-
-    let c3 = camp.get("le-nom").unwrap();
-    let (state, _) = boot_with(c3, Some(&Carry::from_state(&s2))).unwrap();
-    assert_eq!(state.heir.id, "louis");
-    let s3 = play_ids(
-        c3,
-        state,
         &[
-            "laisser-prier",
-            "dire-silence",
-            "vendre-fleurs",
-            "garder-tiroir",
-            "messe",
+            "ouvrir-fuyards",
+            "payer-rancon",
+            "payer-fosses",
+            "rayer-livre",
         ],
     );
-    assert!(s3.flags.contains("dit-silence"));
-    assert!(s3.flags.contains("vu-chapelle"));
-    assert!(s3.next_chapter.is_none());
+    assert!(s2.flags.contains("morts-rayes"));
+
+    let c3 = camp.get("jacques").unwrap();
+    let (state, _) = boot_with(c3, Some(&Carry::from_state(&s2))).unwrap();
+    assert_eq!(state.heir.id, "colin");
+    let s3 = play_ids(c3, state, &["payer-jean", "cacher-herve", "vin-deux"]);
+    assert!(s3.flags.contains("vin-deux-camps"));
+    assert!(!s3.flags.contains("pique-prise"));
+
+    let c4 = camp.get("deux-rois-une-fille").unwrap();
+    let (state, _) = boot_with(c4, Some(&Carry::from_state(&s3))).unwrap();
+    assert_eq!(state.heir.id, "colette");
+    let s4 = play_ids(c4, state, &["salle", "loger-deux", "rien-clouer"]);
+    assert!(s4.flags.contains("pas-clou"));
+    assert_eq!(s4.next_chapter.as_deref(), Some("placard"));
 }

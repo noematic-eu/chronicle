@@ -66,7 +66,12 @@ fn wulfgar_through_part1() {
     assert_eq!(s3.heir.id, "leonce");
     assert!(s3.flags.contains("ragenar-bois"));
     assert!(s3.fiches.iter().any(|f| f.id == "institution:loi-des-fils"));
-    assert!(s3.next_chapter.is_none());
+    assert!(s3.heritage.contains("fibule"));
+    assert!(s3.heritage.contains("cle"));
+    assert_eq!(
+        s3.next_chapter.as_deref(),
+        Some("ceux-qui-ne-viennent-plus")
+    );
 }
 
 #[test]
@@ -90,6 +95,7 @@ fn aurel_skips_sang_petition() {
     assert!(!visible_sang(&state, c3));
     let s3 = play_ids(c3, state, &["aine", "oui", "ceder-cle"]);
     assert_eq!(s3.heir.id, "ragenar");
+    assert!(!s3.heritage.contains("fibule"));
 }
 
 fn visible_sang(state: &WorldState, ir: &Ir) -> bool {

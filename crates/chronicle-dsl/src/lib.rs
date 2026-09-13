@@ -57,11 +57,54 @@ impl Campaign {
             let next = self
                 .chapters
                 .get(&cur)
-                .and_then(|ir| ir.chapter.next.clone());
+                .and_then(|ir| ir.chapter.next.clone())
+                .filter(|n| self.chapters.contains_key(n));
             out.push(cur);
             id = next;
         }
         out
+    }
+
+    /// Next chapter to play: explicit `next` if still in the pack and unfinished,
+    /// otherwise the first chapter in order not listed in `completed`.
+    /// `None` means the pack is finished.
+    pub fn resume(&self, completed: &[String], next_chapter: Option<&str>) -> Option<String> {
+        if let Some(n) = next_chapter {
+            if self.chapters.contains_key(n) && !completed.iter().any(|c| c == n) {
+                return Some(n.to_string());
+            }
+        }
+        for id in self.order() {
+            if !completed.iter().any(|c| c == &id) {
+                return Some(id);
+            }
+        }
+        None
+    }
+
+    /// Pack-level checks `Ir::validate` cannot see (cross-chapter `next`, etc.).
+    pub fn lint(&self) -> Result<()> {
+        let errs = self.lint_messages();
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(DslError::Message(errs.join("\n")))
+        }
+    }
+
+    pub fn lint_messages(&self) -> Vec<String> {
+        let mut errs = Vec::new();
+        for ir in self.chapters.values() {
+            if let Some(n) = &ir.chapter.next {
+                if !self.chapters.contains_key(n) {
+                    errs.push(format!(
+                        "{}: next `{n}` n'existe pas dans le pack",
+                        ir.chapter.id
+                    ));
+                }
+            }
+        }
+        errs
     }
 }
 

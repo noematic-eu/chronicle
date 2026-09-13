@@ -13,6 +13,6 @@ pub use error::{EngineError, Result};
 pub use frame::{plain_em, Frame, Verb};
 pub use ir::{
     ChapterIr, ChoiceIr, ChronicleMeta, CurrencyIr, DebriefIr, EncounterIr, FicheIr, HeirIr, Ir,
-    PetitionIr, TextBlock, SCHEMA,
+    LieuJouable, PetitionIr, TextBlock, SCHEMA,
 };
 pub use state::{Carry, FicheGot, HeirState, WorldState, NOTES_CAP};

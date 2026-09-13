@@ -36,72 +36,63 @@ fn play_ids(ir: &Ir, mut state: WorldState, ids: &[&str]) -> WorldState {
     state
 }
 
-#[test]
-fn metal_and_open_tampu() {
+fn through_part1_open() -> WorldState {
     let camp = camp();
     let c1 = camp.get("murs-vides").unwrap();
     let (state, _) = boot(c1).unwrap();
     let s1 = play_ids(c1, state, &["extraire", "voler", "metal"]);
-    assert!(s1.flags.contains("metal-pille"));
-    assert!(s1.heritage.contains("conopa"));
-
     let c2 = camp.get("seigneurs-de-colline").unwrap();
     let (state, _) = boot_with(c2, Some(&Carry::from_state(&s1))).unwrap();
-    assert_eq!(state.heir.id, "curi");
-    assert!(state.flags.contains("prev-heir-rumi"));
     let s2 = play_ids(
         c2,
         state,
         &["garder-tampu", "donner", "razzier", "garder-metal", "tenir"],
     );
-    assert!(s2.flags.contains("tenu-aube"));
-    assert_eq!(s2.heir.id, "curi");
-
     let c3 = camp.get("hommes-du-cuzco").unwrap();
     let (state, _) = boot_with(c3, Some(&Carry::from_state(&s2))).unwrap();
-    assert_eq!(state.heir.id, "sinchi");
-    assert!(state.flags.contains("prev-heir-curi"));
-    let s3 = play_ids(c3, state, &["livrer", "donner-fils", "ouvrir"]);
-    assert!(s3.flags.contains("kamayuq"));
-    assert!(s3.fiches.iter().any(|f| f.id == "institution:tawantinsuyu"));
-    assert_eq!(s3.next_chapter.as_deref(), Some("tambo-mita"));
+    play_ids(c3, state, &["livrer", "donner-fils", "ouvrir"])
 }
 
 #[test]
-fn sisa_and_isolate() {
+fn tawantinsuyu_to_cajamarca_rumour() {
     let camp = camp();
-    let c1 = camp.get("murs-vides").unwrap();
-    let (state, _) = boot(c1).unwrap();
-    let s1 = play_ids(c1, state, &["laisser", "loger", "conopa"]);
-    assert!(!s1.flags.contains("metal-pille"));
+    let s1 = through_part1_open();
+    assert!(!s1.flags.contains("khipu-brule"));
 
-    let c2 = camp.get("seigneurs-de-colline").unwrap();
-    let (state, _) = boot_with(c2, Some(&Carry::from_state(&s1))).unwrap();
-    assert!(!c2
+    let c4 = camp.get("tambo-mita").unwrap();
+    let (state, _) = boot_with(c4, Some(&Carry::from_state(&s1))).unwrap();
+    assert_eq!(state.heir.id, "titu");
+    let s4 = play_ids(c4, state, &["vrai", "rendre-lama", "envoyer-frere"]);
+    assert!(s4.flags.contains("khipu-juste"));
+    assert!(s4.flags.contains("frere-parti"));
+
+    let c5 = camp.get("celle-qui-reste").unwrap();
+    let (state, _) = boot_with(c5, Some(&Carry::from_state(&s4))).unwrap();
+    assert_eq!(state.heir.id, "ocllo");
+    let s5 = play_ids(
+        c5,
+        state,
+        &[
+            "donner-fille",
+            "asseoir-otage",
+            "loger-mitmaq",
+            "garder-conopa",
+            "dire-vrai",
+        ],
+    );
+    assert!(s5.flags.contains("fille-aclla"));
+    assert!(s5.flags.contains("otage-a-table"));
+    assert!(s5.flags.contains("recensement-vrai"));
+
+    let c6 = camp.get("deux-incas").unwrap();
+    let (state, _) = boot_with(c6, Some(&Carry::from_state(&s5))).unwrap();
+    assert_eq!(state.heir.id, "quispe");
+    assert!(!c6
         .chapter
         .petitions
         .iter()
-        .any(|p| p.id == "metal-vu" && state.flags.contains("metal-pille")));
-    let s2 = play_ids(c2, state, &["ceder", "refuser-otage", "attendre", "pukara"]);
-    assert_eq!(s2.heir.id, "sisa");
-    assert!(s2.flags.contains("curi-mort"));
-    assert!(s2.flags.contains("tampu-au-curaca"));
-
-    let c3 = camp.get("hommes-du-cuzco").unwrap();
-    let (state, _) = boot_with(c3, Some(&Carry::from_state(&s2))).unwrap();
-    assert_eq!(state.heir.id, "sinchi");
-    assert!(state.flags.contains("prev-heir-sisa"));
-    let s3 = play_ids(
-        c3,
-        state,
-        &[
-            "bruler",
-            "cacher-fils",
-            "sisa-ouvre",
-            "parler-seul",
-            "tenir",
-        ],
-    );
-    assert!(s3.flags.contains("resistance"));
-    assert!(!s3.heritage.contains("khipu-ayllu"));
+        .any(|p| p.id == "deficit" && state.flags.contains("khipu-truque")));
+    let s6 = play_ids(c6, state, &["cuzco", "suivre-illa", "nourrir-deux"]);
+    assert!(s6.flags.contains("nouvelle-cajamarca"));
+    assert_eq!(s6.next_chapter.as_deref(), Some("cajamarca"));
 }

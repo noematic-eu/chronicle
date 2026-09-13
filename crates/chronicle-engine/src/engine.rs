@@ -67,6 +67,7 @@ pub fn boot_with(ir: &Ir, carry: Option<&Carry>) -> Result<(WorldState, Frame)> 
         last_choice: None,
         next_chapter: ch.next.clone(),
         overlay: None,
+        lieu: None,
     };
     state.narrative = render_briefing(ir, &state);
     let frame = render(ir, &state)?;
@@ -149,12 +150,31 @@ fn flag_ok(state: &WorldState, when: &Option<String>, when_not: &Option<String>)
     true
 }
 
+fn visible_lieux<'a>(ir: &'a Ir, state: &WorldState) -> Vec<&'a crate::ir::LieuJouable> {
+    ir.chapter
+        .lieux_jouables
+        .iter()
+        .filter(|l| flag_ok(state, &l.when_flag, &l.when_not_flag))
+        .collect()
+}
+
 fn visible_petitions<'a>(ir: &'a Ir, state: &WorldState) -> Vec<(usize, &'a PetitionIr)> {
+    let allowed: Option<Vec<String>> = state.lieu.as_ref().and_then(|id| {
+        ir.chapter
+            .lieux_jouables
+            .iter()
+            .find(|l| &l.id == id)
+            .map(|l| l.petitions.clone())
+    });
     ir.chapter
         .petitions
         .iter()
         .enumerate()
         .filter(|(_, p)| flag_ok(state, &p.when_flag, &p.when_not_flag))
+        .filter(|(_, p)| match &allowed {
+            None => true,
+            Some(ids) => ids.iter().any(|id| id == &p.id),
+        })
         .collect()
 }
 
@@ -167,6 +187,10 @@ fn visible_choices<'a>(choices: &'a [ChoiceIr], state: &WorldState) -> Vec<&'a C
 
 pub fn choice_ids(ir: &Ir, state: &WorldState) -> Vec<String> {
     match state.mode.as_str() {
+        "lieu" => visible_lieux(ir, state)
+            .into_iter()
+            .map(|l| l.id.clone())
+            .collect(),
         "petition" => ir
             .chapter
             .petitions
@@ -208,10 +232,29 @@ fn enter_petition(ir: &Ir, state: &mut WorldState, after: Option<usize>) {
     }
 }
 
+fn enter_lieu(ir: &Ir, state: &mut WorldState) {
+    let lieux = visible_lieux(ir, state);
+    if lieux.is_empty() {
+        enter_petition(ir, state, None);
+        return;
+    }
+    state.mode = "lieu".into();
+    state.cursor = 0;
+    state.narrative = interpolate(
+        ir,
+        state,
+        "Tu ne peux pas être partout. Où vas-tu ? Le reste de cette France-là se fera sans toi.",
+    );
+}
+
 fn continue_mode(ir: &Ir, state: &mut WorldState) -> Result<()> {
     match state.mode.as_str() {
         "briefing" => {
-            enter_petition(ir, state, None);
+            if ir.chapter.lieux_jouables.is_empty() {
+                enter_petition(ir, state, None);
+            } else {
+                enter_lieu(ir, state);
+            }
         }
         "aftermath" => {
             enter_petition(ir, state, Some(state.petition_i));
@@ -221,14 +264,14 @@ fn continue_mode(ir: &Ir, state: &mut WorldState) -> Result<()> {
         }
         "debrief" => {
             state.mode = "done".into();
-            state.narrative = format!(
-                "La chronique s'arrête ici pour ce siècle.\n\nHéritier suivant : {}.\nChapitre suivant : {}.",
-                state.heir.name,
-                state
-                    .next_chapter
-                    .as_deref()
-                    .unwrap_or("—")
+            let mut text = format!(
+                "La chronique s'arrête ici pour ce siècle.\n\nHéritier suivant : {}.",
+                state.heir.name
             );
+            if let Some(n) = state.next_chapter.as_deref() {
+                text.push_str(&format!("\nChapitre suivant : {n}."));
+            }
+            state.narrative = text;
         }
         "done" => {}
         other => {
@@ -254,6 +297,23 @@ fn enter_debrief(ir: &Ir, state: &mut WorldState) {
 }
 
 fn choose(ir: &Ir, state: &mut WorldState, index: usize) -> Result<()> {
+    if state.mode == "lieu" {
+        let lieux = visible_lieux(ir, state);
+        let lieu = lieux
+            .get(index)
+            .ok_or_else(|| EngineError::UnknownChoice(index.to_string()))?;
+        state.lieu = Some(lieu.id.clone());
+        state.flags.insert(format!("lieu-{}", lieu.id));
+        state.cursor = 0;
+        let body = interpolate(ir, state, &lieu.texte);
+        state.narrative = if body.is_empty() {
+            lieu.nom.clone()
+        } else {
+            format!("{{em}}{}{{/em}}\n\n{}", lieu.nom, body)
+        };
+        enter_petition(ir, state, None);
+        return Ok(());
+    }
     let (choice, after_mode) = match state.mode.as_str() {
         "petition" => {
             let p = ir
@@ -289,8 +349,9 @@ fn choose(ir: &Ir, state: &mut WorldState, index: usize) -> Result<()> {
 
 fn apply_choice(state: &mut WorldState, choice: &ChoiceIr) {
     for (k, d) in &choice.delta {
-        let e = state.monnaies.entry(k.clone()).or_insert(0);
-        *e = (*e + d).max(0);
+        if let Some(e) = state.monnaies.get_mut(k) {
+            *e = (*e + d).max(0);
+        }
     }
     for f in &choice.flags {
         state.flags.insert(f.clone());
@@ -300,11 +361,12 @@ fn apply_choice(state: &mut WorldState, choice: &ChoiceIr) {
             state.notes.push(note.clone());
         }
     }
-    if !choice.heritage.is_empty() {
-        state.heritage = choice.heritage.iter().cloned().collect();
-        if state.monnaies.get("chevaux").copied().unwrap_or(0) > 0 {
-            state.heritage.insert("cheval".into());
-        }
+    // `heritage` is a union: listing an item never wipes the rest of the cave.
+    for h in &choice.heritage {
+        state.heritage.insert(h.clone());
+    }
+    if !choice.heritage.is_empty() && state.monnaies.get("chevaux").copied().unwrap_or(0) > 0 {
+        state.heritage.insert("cheval".into());
     }
     for h in &choice.heritage_remove {
         state.heritage.remove(h);
@@ -429,6 +491,7 @@ fn hud_line(ir: &Ir, state: &WorldState) -> Value {
         .join("   ");
     let phase = match state.play_mode() {
         "briefing" => "briefing".into(),
+        "lieu" => "où".into(),
         "petition" => format!(
             "pétition {}/{}",
             state.petition_i + 1,
@@ -447,8 +510,19 @@ fn hud_line(ir: &Ir, state: &WorldState) -> Value {
         "help" => "aide".into(),
         other => other.into(),
     };
+    let location = state
+        .lieu
+        .as_ref()
+        .and_then(|id| {
+            ir.chapter
+                .lieux_jouables
+                .iter()
+                .find(|l| &l.id == id)
+                .map(|l| l.nom.clone())
+        })
+        .unwrap_or_else(|| ir.chronicle.lieu.clone());
     json!({
-        "location": ir.chronicle.lieu,
+        "location": location,
         "heir": state.heir.name,
         "phase": phase,
         "money": money,
@@ -472,6 +546,7 @@ pub fn render(ir: &Ir, state: &WorldState) -> Result<Frame> {
             render_page(ir, state, "continue")
         }
         "petition" => render_list(ir, state, petition_list(ir, state)),
+        "lieu" => render_list(ir, state, lieu_list(ir, state)),
         "set_piece" => render_list(ir, state, set_piece_list(ir, state)),
         other => Err(EngineError::Other(format!("no renderer for {other}"))),
     }
@@ -522,6 +597,13 @@ fn render_list(ir: &Ir, state: &WorldState, list: Vec<Value>) -> Result<Frame> {
     .with_footer())
 }
 
+fn lieu_list(ir: &Ir, state: &WorldState) -> Vec<Value> {
+    visible_lieux(ir, state)
+        .into_iter()
+        .map(|l| json!({ "id": l.id, "name": l.nom }))
+        .collect()
+}
+
 fn petition_list(ir: &Ir, state: &WorldState) -> Vec<Value> {
     ir.chapter
         .petitions
@@ -558,7 +640,7 @@ fn render_overlay(ir: &Ir, state: &WorldState, kind: &str) -> Result<Frame> {
             }
         }
         "help" => {
-            "j/k  liste\nEnter  choisir / continuer\nn  carnet\n?  aide\nq  quitter\n\nL'histoire continue si tu rates. Tu classeras des fiches à la fin du chapitre.".into()
+            "j/k  liste\nEnter  choisir / continuer\nn  carnet\n?  aide\nq  quitter\n\nParfois tu choisis d'abord un lieu : tu ne peux pas être partout. L'histoire continue si tu rates.".into()
         }
         _ => String::new(),
     };

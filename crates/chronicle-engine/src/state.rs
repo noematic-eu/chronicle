@@ -59,6 +59,8 @@ pub struct WorldState {
     pub next_chapter: Option<String>,
     #[serde(default)]
     pub overlay: Option<String>,
+    #[serde(default)]
+    pub lieu: Option<String>,
 }
 
 impl WorldState {

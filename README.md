@@ -12,11 +12,15 @@ Stories live in a separate pack (`chronicle-stories`). This repo is the player.
 ```bash
 cargo run -- play ../chronicle-stories/france/play
 cargo run -- play ../chronicle-stories/peru/play
+cargo run -- play ../chronicle-stories/silence/play
+cargo run -- lint ../chronicle-stories/france/play
 ```
 
 Keys: j/k, Enter, n notes, ? help, q quit.
 
-Saves: `instance/chronicle/<france|peru>/lineage.json`.
+Saves: `instance/chronicle/<france|peru|silence>/lineage.json`.
+
+`heritage` on a choice is a union (it never wipes the cave). `next` must name a chapter in the pack or `lint` fails.
 
 Override the packs root with `CHRONICLE_STORIES=/path/to/chronicle-stories`.
 

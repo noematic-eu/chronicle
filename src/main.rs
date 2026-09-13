@@ -53,6 +53,7 @@ fn real_main() -> Result<(), String> {
         Cmd::Lint { path } => {
             if path.is_dir() {
                 let camp = compile_campaign(&path).map_err(|e| e.to_string())?;
+                camp.lint().map_err(|e| e.to_string())?;
                 println!(
                     "ok: {} ({}) — {}",
                     camp.meta.id,
@@ -100,29 +101,56 @@ fn play_campaign(
     inst: &std::path::Path,
     force: Option<String>,
 ) -> Result<(), String> {
+    let save_file = persist::save_path(inst, &camp.meta.id);
     let save = persist::read_lineage(inst, &camp.meta.id).map_err(|e| e.to_string())?;
-    if let Some(prev) = &save {
-        eprintln!(
-            "lignée : {} · {} → {}",
-            prev.heir.name,
-            prev.completed.join(", "),
-            prev.next_chapter.as_deref().unwrap_or("—")
-        );
-    }
-    let mut chapter_id = force
-        .or_else(|| {
-            save.as_ref()
-                .and_then(|s| s.next_chapter.clone())
-                .filter(|id| camp.chapters.contains_key(id))
-        })
-        .unwrap_or_else(|| camp.entry.clone());
+    let mut chapter_id = if let Some(id) = force {
+        id
+    } else {
+        match &save {
+            None => {
+                eprintln!(
+                    "pas de lignée ({}) — début {}",
+                    save_file.display(),
+                    camp.entry
+                );
+                camp.entry.clone()
+            }
+            Some(prev) => match camp.resume(&prev.completed, prev.next_chapter.as_deref()) {
+                Some(id) => {
+                    eprintln!(
+                        "lignée : {} · {} → {} ({})",
+                        prev.heir.name,
+                        prev.completed.join(", "),
+                        id,
+                        save_file.display()
+                    );
+                    id
+                }
+                None => {
+                    eprintln!(
+                        "campagne terminée : {} ({})",
+                        prev.completed.join(" → "),
+                        save_file.display()
+                    );
+                    return Ok(());
+                }
+            },
+        }
+    };
     let mut carry: Option<Carry> = save.as_ref().map(persist::to_carry);
 
     loop {
         let ir = camp
             .get(&chapter_id)
             .ok_or_else(|| format!("chapter `{chapter_id}` not in campaign"))?;
-        let (state, frame) = boot_with(ir, carry.as_ref()).map_err(|e| e.to_string())?;
+        let (mut state, frame) = boot_with(ir, carry.as_ref()).map_err(|e| e.to_string())?;
+        if state
+            .next_chapter
+            .as_ref()
+            .is_some_and(|n| !camp.chapters.contains_key(n))
+        {
+            state.next_chapter = None;
+        }
         if !std::io::stdout().is_terminal() {
             println!(
                 "— {} —\n{}",
